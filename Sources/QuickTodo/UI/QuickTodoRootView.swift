@@ -298,12 +298,13 @@ struct PrimaryActionButton: View {
                 .foregroundStyle(.black.opacity(0.82))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(QuickTodoTheme.accent)
+                )
         }
         .buttonStyle(.plain)
-        .background(
-            Capsule()
-                .fill(QuickTodoTheme.accent)
-        )
+        .contentShape(Capsule())
     }
 }
 
@@ -319,11 +320,12 @@ struct SecondaryActionButton: View {
                 .foregroundStyle(QuickTodoTheme.primaryText)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .stroke(QuickTodoTheme.line, lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
-        .background(
-            Capsule()
-                .stroke(QuickTodoTheme.line, lineWidth: 1)
-        )
+        .contentShape(Capsule())
     }
 }
