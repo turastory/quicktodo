@@ -9,6 +9,10 @@ enum AppMenuController {
         appMenuItem.submenu = buildAppMenu()
         mainMenu.addItem(appMenuItem)
 
+        let fileMenuItem = NSMenuItem()
+        fileMenuItem.submenu = buildFileMenu()
+        mainMenu.addItem(fileMenuItem)
+
         let editMenuItem = NSMenuItem()
         editMenuItem.submenu = buildEditMenu()
         mainMenu.addItem(editMenuItem)
@@ -31,6 +35,15 @@ enum AppMenuController {
         menu.addItem(settingsItem)
         menu.addItem(.separator())
         menu.addItem(quitItem)
+
+        return menu
+    }
+
+    private static func buildFileMenu() -> NSMenu {
+        let menu = NSMenu(title: "File")
+
+        let saveItem = NSMenuItem(title: "Save", action: #selector(AppDelegate.saveDocument(_:)), keyEquivalent: "s")
+        menu.addItem(saveItem)
 
         return menu
     }

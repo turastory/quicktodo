@@ -35,6 +35,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindowController?.showWindow()
     }
 
+    @objc func saveDocument(_ sender: Any?) {
+        appModel.saveDocument()
+    }
+
     @objc func quit(_ sender: Any?) {
         NSApp.terminate(nil)
     }

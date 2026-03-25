@@ -19,15 +19,32 @@ struct SyncStateRecoveryTests {
 
     @Test
     func dismissErrorReturnsEditingForDirtyDocument() {
+        let now = Date(timeIntervalSince1970: 1_720_000_000)
         let recovered = SyncStateRecovery.stateAfterDismissingError(
             isDirty: true,
             hasSelectedFile: true,
             selectedFileExists: true,
             hasPendingConflict: false,
-            lastNonErrorState: .saved(.now)
+            lastNonErrorState: .saved(.now),
+            now: now
         )
 
-        #expect(recovered == .editing)
+        #expect(recovered == .editing(now))
+    }
+
+    @Test
+    func dismissErrorPreservesExistingEditingTimestampForDirtyDocument() {
+        let editedAt = Date(timeIntervalSince1970: 1_720_000_123)
+        let recovered = SyncStateRecovery.stateAfterDismissingError(
+            isDirty: true,
+            hasSelectedFile: true,
+            selectedFileExists: true,
+            hasPendingConflict: false,
+            lastNonErrorState: .editing(editedAt),
+            now: .now
+        )
+
+        #expect(recovered == .editing(editedAt))
     }
 
     @Test

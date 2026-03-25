@@ -33,7 +33,6 @@ final class AppModel: ObservableObject {
     private let documentStore = MarkdownDocumentStore()
     private let defaults = UserDefaults.standard
 
-    private var autosaveTask: Task<Void, Never>?
     private var directoryMonitor: DirectoryMonitor?
     private var hasBootstrapped = false
     private var lastLoadedContent = ""
@@ -126,8 +125,7 @@ final class AppModel: ObservableObject {
         }
 
         editorText = text
-        syncState = .editing
-        scheduleAutosave()
+        syncState = .editing(editingStartedAt ?? .now)
     }
 
     func reloadFromDisk() {
@@ -144,11 +142,7 @@ final class AppModel: ObservableObject {
 
     func keepMineAndSave() {
         pendingConflict = nil
-        autosaveTask?.cancel()
-
-        Task {
-            await saveSnapshot(editorText, overwriteConflict: true)
-        }
+        saveDocument(overwriteConflict: true)
     }
 
     func dismissError() {
@@ -158,8 +152,13 @@ final class AppModel: ObservableObject {
             hasSelectedFile: hasSelectedFile,
             selectedFileExists: selectedFileURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false,
             hasPendingConflict: pendingConflict != nil,
-            lastNonErrorState: lastNonErrorSyncState
+            lastNonErrorState: lastNonErrorSyncState,
+            now: .now
         )
+    }
+
+    func saveDocument() {
+        saveDocument(overwriteConflict: false)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -196,6 +195,14 @@ final class AppModel: ObservableObject {
         editorText != lastLoadedContent
     }
 
+    private var editingStartedAt: Date? {
+        guard case let .editing(editedAt) = syncState else {
+            return nil
+        }
+
+        return editedAt
+    }
+
     private func openFile(at url: URL, preserveSelection: Bool = false) async {
         syncState = .loading
         lastErrorMessage = nil
@@ -224,26 +231,9 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func scheduleAutosave() {
-        autosaveTask?.cancel()
-
-        guard selectedFileURL != nil else {
-            return
-        }
-
-        let snapshot = editorText
-        autosaveTask = Task { [weak self] in
-            do {
-                try await Task.sleep(for: .milliseconds(500))
-            } catch {
-                return
-            }
-
-            guard Task.isCancelled == false else {
-                return
-            }
-
-            await self?.saveSnapshot(snapshot, overwriteConflict: false)
+    private func saveDocument(overwriteConflict: Bool) {
+        Task {
+            await saveSnapshot(editorText, overwriteConflict: overwriteConflict)
         }
     }
 
@@ -256,6 +246,7 @@ final class AppModel: ObservableObject {
             return
         }
 
+        let editingStartedAt = self.editingStartedAt ?? .now
         syncState = .saving
 
         do {
@@ -266,7 +257,7 @@ final class AppModel: ObservableObject {
             lastKnownFingerprint = writtenDocument.fingerprint
             self.selectedFileURL = readyURL
             lastErrorMessage = nil
-            syncState = editorText == snapshot ? .saved(Date()) : .editing
+            syncState = editorText == snapshot ? .saved(Date()) : .editing(editingStartedAt)
         } catch {
             showError(error.localizedDescription)
         }

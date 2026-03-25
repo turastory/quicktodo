@@ -144,6 +144,10 @@ private struct SyncStatusView: View {
     var body: some View {
         Group {
             switch syncState {
+            case let .editing(editedAt):
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    statusText(for: .editing(editedAt), relativeTo: context.date)
+                }
             case let .saved(savedAt):
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     statusText(for: .saved(savedAt), relativeTo: context.date)
@@ -177,29 +181,8 @@ private struct SyncStatusView: View {
     }
 
     private static func statusLabel(for state: SyncState, relativeTo now: Date) -> String {
-        switch state {
-        case .idle:
-            return "Ready"
-        case .loading:
-            return "Opening"
-        case .editing:
-            return "Editing"
-        case .saving:
-            return "Saving"
-        case let .saved(date):
-            return "Saved \(relativeFormatter.localizedString(for: date, relativeTo: now))"
-        case .conflict:
-            return "Conflict"
-        case .error:
-            return "Attention"
-        }
+        SyncStatusFormatter.statusLabel(for: state, relativeTo: now)
     }
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
 }
 
 private struct EmptyStateView: View {

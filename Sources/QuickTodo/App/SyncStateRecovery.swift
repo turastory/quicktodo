@@ -6,14 +6,20 @@ public enum SyncStateRecovery {
         hasSelectedFile: Bool,
         selectedFileExists: Bool,
         hasPendingConflict: Bool,
-        lastNonErrorState: SyncState
+        lastNonErrorState: SyncState,
+        now: Date = .now
     ) -> SyncState {
         if hasPendingConflict {
             return .conflict
         }
 
         if isDirty {
-            return .editing
+            switch lastNonErrorState {
+            case let .editing(editedAt):
+                return .editing(editedAt)
+            default:
+                return .editing(now)
+            }
         }
 
         guard hasSelectedFile, selectedFileExists else {
