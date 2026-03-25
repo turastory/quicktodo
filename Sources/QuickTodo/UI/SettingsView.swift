@@ -5,6 +5,19 @@ struct SettingsView: View {
     @EnvironmentObject private var appModel: AppModel
     @FocusState private var isFontSizeFieldFocused: Bool
     @State private var editorFontSizeInput = ""
+    @State private var editorFontSearchText = ""
+    private let shortcutRecorder: AnyView
+
+    init(shortcutRecorder: AnyView? = nil) {
+        if let shortcutRecorder {
+            self.shortcutRecorder = shortcutRecorder
+        } else {
+            self.shortcutRecorder = AnyView(
+                KeyboardShortcuts.Recorder(for: .toggleQuickTodo)
+                    .labelsHidden()
+            )
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,8 +44,7 @@ struct SettingsView: View {
             sectionHeader(title: "Hotkey", caption: "어디서든 패널을 열고 닫는 글로벌 단축키입니다.")
 
             VStack(alignment: .leading, spacing: 12) {
-                KeyboardShortcuts.Recorder(for: .toggleQuickTodo)
-                    .labelsHidden()
+                shortcutRecorder
 
                 Text("기본값은 `⌘.` 이고, 충돌이 있다면 여기서 바꾸면 됩니다.")
                     .font(.system(size: 12, weight: .regular, design: .default))
@@ -52,19 +64,20 @@ struct SettingsView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(QuickTodoTheme.primaryText)
 
-                    Picker(
-                        "Editor Font",
-                        selection: Binding(
-                            get: { appModel.editorSettings.fontChoice },
-                            set: { appModel.setEditorFontChoice($0) }
-                        )
-                    ) {
-                        ForEach(EditorFontChoice.allCases) { choice in
-                            Text(choice.displayName).tag(choice)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: 240, alignment: .leading)
+                    Text(appModel.selectedEditorFontName)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(QuickTodoTheme.accent)
+
+                    TextField("Search fonts", text: $editorFontSearchText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 13, weight: .regular, design: .default))
+
+                    EditorFontListView(
+                        sections: appModel.editorFontSections(searchText: editorFontSearchText),
+                        selectedFontName: appModel.selectedEditorFontName,
+                        onSelectFont: appModel.setEditorFontName
+                    )
+                    .frame(height: 240)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -164,5 +177,69 @@ struct SettingsView: View {
 
     private func syncEditorFontSizeInput() {
         editorFontSizeInput = appModel.editorFontSizeDisplay
+    }
+}
+
+private struct EditorFontListView: View {
+    let sections: [EditorFontSection]
+    let selectedFontName: String
+    let onSelectFont: (String) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                ForEach(sections, id: \.title) { section in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(section.title.uppercased())
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(QuickTodoTheme.secondaryText)
+
+                        ForEach(section.fontNames, id: \.self) { fontName in
+                            Button {
+                                onSelectFont(fontName)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Text(fontName)
+                                        .font(.system(size: 13, weight: .medium, design: .default))
+                                        .foregroundStyle(
+                                            fontName == selectedFontName ? QuickTodoTheme.accent : QuickTodoTheme.primaryText
+                                        )
+
+                                    Spacer()
+
+                                    if fontName == selectedFontName {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(QuickTodoTheme.accent)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 9)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(fontName == selectedFontName ? QuickTodoTheme.chrome : .clear)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if sections.isEmpty {
+                    Text("검색 결과가 없습니다.")
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundStyle(QuickTodoTheme.secondaryText)
+                        .padding(.vertical, 8)
+                }
+            }
+            .padding(12)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(QuickTodoTheme.chrome)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(QuickTodoTheme.line, lineWidth: 1)
+        )
     }
 }

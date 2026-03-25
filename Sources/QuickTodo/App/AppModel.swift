@@ -28,10 +28,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var pendingConflict: ExternalConflict?
     @Published private(set) var editorSettings: EditorSettings
+    @Published private(set) var recentEditorFontNames: [String]
     @Published var editorText = ""
 
     private let documentStore = MarkdownDocumentStore()
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+    private let editorFontLibrary: EditorFontLibrary
+    private let hotkeyDisplayOverride: String?
 
     private var directoryMonitor: DirectoryMonitor?
     private var hasBootstrapped = false
@@ -40,10 +43,30 @@ final class AppModel: ObservableObject {
     private var lastNonErrorSyncState: SyncState = .idle
     private var cancellables = Set<AnyCancellable>()
 
-    private init() {
+    private init(
+        defaults: UserDefaults = .standard,
+        editorFontLibrary: EditorFontLibrary = EditorFontLibrary(),
+        observeDefaults: Bool = true,
+        hotkeyDisplayOverride: String? = nil
+    ) {
+        self.defaults = defaults
+        self.editorFontLibrary = editorFontLibrary
+        self.hotkeyDisplayOverride = hotkeyDisplayOverride
+
+        recentEditorFontNames = []
         editorSettings = EditorSettings.load(
-            fontChoiceRawValue: defaults.string(forKey: PreferenceKey.editorFontChoice.rawValue),
-            fontSize: defaults.object(forKey: PreferenceKey.editorFontSize.rawValue) as? Double
+            fontName: nil,
+            fontSize: nil,
+            fontLibrary: editorFontLibrary
+        )
+
+        recentEditorFontNames = (defaults.stringArray(forKey: PreferenceKey.recentEditorFontNames.rawValue) ?? [])
+            .filter(editorFontLibrary.isAvailable)
+
+        editorSettings = EditorSettings.load(
+            fontName: defaults.string(forKey: PreferenceKey.editorFontName.rawValue),
+            fontSize: defaults.object(forKey: PreferenceKey.editorFontSize.rawValue) as? Double,
+            fontLibrary: editorFontLibrary
         )
 
         if defaults.object(forKey: PreferenceKey.launchAtLogin.rawValue) == nil {
@@ -52,11 +75,13 @@ final class AppModel: ObservableObject {
 
         launchAtLoginEnabled = defaults.bool(forKey: PreferenceKey.launchAtLogin.rawValue)
 
-        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+        if observeDefaults {
+            NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &cancellables)
+        }
     }
 
     var hasSelectedFile: Bool {
@@ -78,11 +103,19 @@ final class AppModel: ObservableObject {
     }
 
     var hotkeyDisplay: String {
-        KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
+        if let hotkeyDisplayOverride {
+            return hotkeyDisplayOverride
+        }
+
+        return KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
     }
 
     var editorFontSizeDisplay: String {
         editorSettings.fontSize.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    var selectedEditorFontName: String {
+        editorSettings.fontName
     }
 
     func bootstrap() {
@@ -171,13 +204,28 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func setEditorFontChoice(_ choice: EditorFontChoice) {
-        guard editorSettings.fontChoice != choice else {
+    func editorFontSections(searchText: String) -> [EditorFontSection] {
+        editorFontLibrary.sections(
+            searchText: searchText,
+            recentFontNames: recentEditorFontNames
+        )
+    }
+
+    func setEditorFontName(_ fontName: String) {
+        let resolvedFontName = editorFontLibrary.resolvedFontName(fontName)
+
+        guard editorSettings.fontName != resolvedFontName || recentEditorFontNames.first != resolvedFontName else {
             return
         }
 
-        editorSettings.fontChoice = choice
-        defaults.set(choice.rawValue, forKey: PreferenceKey.editorFontChoice.rawValue)
+        editorSettings.fontName = resolvedFontName
+        recentEditorFontNames = editorFontLibrary.updatedRecentFontNames(
+            byAdding: resolvedFontName,
+            to: recentEditorFontNames
+        )
+
+        defaults.set(resolvedFontName, forKey: PreferenceKey.editorFontName.rawValue)
+        defaults.set(recentEditorFontNames, forKey: PreferenceKey.recentEditorFontNames.rawValue)
     }
 
     func setEditorFontSize(_ size: Double) {
@@ -341,10 +389,56 @@ final class AppModel: ObservableObject {
     private enum PreferenceKey: String {
         case selectedFilePath
         case launchAtLogin
-        case editorFontChoice
+        case editorFontName
         case editorFontSize
+        case recentEditorFontNames
     }
 
     private static let markdownType = UTType(filenameExtension: "md") ?? .plainText
     private static let allowedContentTypes = [markdownType, .plainText]
+}
+
+extension AppModel {
+    enum SnapshotFixture {
+        case quickTodoEmptyState
+        case settings
+    }
+
+    static func snapshotPreview(for fixture: SnapshotFixture) -> AppModel {
+        let suiteName = "QuickTodoSnapshotPreview.\(fixture).\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Helvetica Neue", "Menlo"],
+            recommendedFontNames: ["Menlo", "Avenir Next"]
+        )
+        let appModel = AppModel(
+            defaults: defaults,
+            editorFontLibrary: fontLibrary,
+            observeDefaults: false,
+            hotkeyDisplayOverride: "⌘."
+        )
+
+        switch fixture {
+        case .quickTodoEmptyState:
+            appModel.syncState = .idle
+            appModel.editorText = ""
+
+        case .settings:
+            appModel.selectedFileURL = URL(fileURLWithPath: "/Users/snapshot/Obsidian/Todo.md")
+            appModel.syncState = .saved(Date(timeIntervalSinceReferenceDate: 0))
+            appModel.editorText = "- Inbox\n- Ship snapshot tests"
+            appModel.lastLoadedContent = appModel.editorText
+            appModel.editorSettings = EditorSettings(
+                fontName: "Menlo",
+                fontSize: 16,
+                fontLibrary: fontLibrary
+            )
+            appModel.recentEditorFontNames = ["Menlo", "Avenir Next"]
+            appModel.launchAtLoginEnabled = true
+        }
+
+        return appModel
+    }
 }

@@ -24,7 +24,8 @@ let package = Package(
         .testTarget(
             name: "QuickTodoTests",
             dependencies: ["QuickTodo"],
-            path: "Tests/QuickTodoTests"
+            path: "Tests/QuickTodoTests",
+            exclude: ["__Snapshots__"]
         ),
     ]
 )

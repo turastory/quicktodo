@@ -47,7 +47,7 @@ struct QuickTodoRootView: View {
                 hotkeyDisplay: appModel.hotkeyDisplay
             )
         }
-        .frame(minWidth: 680, minHeight: 420)
+        .frame(minWidth: 320, minHeight: 420)
         .background(QuickTodoTheme.canvas)
     }
 }

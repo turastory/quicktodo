@@ -5,28 +5,40 @@ import Testing
 struct EditorSettingsTests {
     @Test
     func loadFallsBackToDefaultsWhenStoredValuesAreMissing() {
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Menlo", "SF Mono"],
+            recommendedFontNames: ["SF Mono", "Menlo"]
+        )
         let settings = EditorSettings.load(
-            fontChoiceRawValue: nil,
-            fontSize: nil
+            fontName: nil,
+            fontSize: nil,
+            fontLibrary: fontLibrary
         )
 
-        #expect(settings.fontChoice == .monaspaceNeon)
+        #expect(settings.fontName == "SF Mono")
         #expect(settings.fontSize == 15)
     }
 
     @Test
     func loadPreservesAnyPositiveFontSizeWithoutClamping() {
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Menlo", "SF Mono"],
+            recommendedFontNames: ["SF Mono", "Menlo"]
+        )
         let small = EditorSettings.load(
-            fontChoiceRawValue: EditorFontChoice.menlo.rawValue,
-            fontSize: 8
+            fontName: "Menlo",
+            fontSize: 8,
+            fontLibrary: fontLibrary
         )
         let large = EditorSettings.load(
-            fontChoiceRawValue: EditorFontChoice.menlo.rawValue,
-            fontSize: 42
+            fontName: "Menlo",
+            fontSize: 42,
+            fontLibrary: fontLibrary
         )
         let huge = EditorSettings.load(
-            fontChoiceRawValue: EditorFontChoice.menlo.rawValue,
-            fontSize: 120
+            fontName: "Menlo",
+            fontSize: 120,
+            fontLibrary: fontLibrary
         )
 
         #expect(small.fontSize == 8)
@@ -36,13 +48,19 @@ struct EditorSettingsTests {
 
     @Test
     func loadFallsBackToDefaultWhenStoredFontSizeIsNotPositive() {
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Menlo", "SF Mono"],
+            recommendedFontNames: ["SF Mono", "Menlo"]
+        )
         let zero = EditorSettings.load(
-            fontChoiceRawValue: EditorFontChoice.sfMono.rawValue,
-            fontSize: 0
+            fontName: "SF Mono",
+            fontSize: 0,
+            fontLibrary: fontLibrary
         )
         let negative = EditorSettings.load(
-            fontChoiceRawValue: EditorFontChoice.sfMono.rawValue,
-            fontSize: -4
+            fontName: "SF Mono",
+            fontSize: -4,
+            fontLibrary: fontLibrary
         )
 
         #expect(zero.fontSize == EditorSettings.defaultFontSize)
@@ -51,12 +69,17 @@ struct EditorSettingsTests {
 
     @Test
     func loadFallsBackWhenStoredFontChoiceIsUnknown() {
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Menlo", "SF Mono"],
+            recommendedFontNames: ["SF Mono", "Menlo"]
+        )
         let settings = EditorSettings.load(
-            fontChoiceRawValue: "totally-unknown-font",
-            fontSize: 17
+            fontName: "totally-unknown-font",
+            fontSize: 17,
+            fontLibrary: fontLibrary
         )
 
-        #expect(settings.fontChoice == .monaspaceNeon)
+        #expect(settings.fontName == "SF Mono")
         #expect(settings.fontSize == 17)
     }
 }
