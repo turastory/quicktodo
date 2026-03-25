@@ -3,6 +3,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appModel: AppModel
+    @FocusState private var isFontSizeFieldFocused: Bool
+    @State private var editorFontSizeInput = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -42,6 +44,61 @@ struct SettingsView: View {
             Divider()
                 .overlay(QuickTodoTheme.line)
 
+            sectionHeader(title: "Editor", caption: "에디터에서 사용할 글꼴과 글자 크기를 바로 바꿉니다.")
+
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Editor Font")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(QuickTodoTheme.primaryText)
+
+                    Picker(
+                        "Editor Font",
+                        selection: Binding(
+                            get: { appModel.editorSettings.fontChoice },
+                            set: { appModel.setEditorFontChoice($0) }
+                        )
+                    ) {
+                        ForEach(EditorFontChoice.allCases) { choice in
+                            Text(choice.displayName).tag(choice)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 240, alignment: .leading)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Text Size")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(QuickTodoTheme.primaryText)
+
+                        Spacer()
+                    }
+
+                    TextField("15", text: $editorFontSizeInput)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .frame(maxWidth: 120, alignment: .leading)
+                        .focused($isFontSizeFieldFocused)
+                        .onSubmit(commitEditorFontSizeInput)
+                        .onChange(of: isFontSizeFieldFocused) { isFocused in
+                            if isFocused == false {
+                                commitEditorFontSizeInput()
+                            }
+                        }
+
+                    Text("숫자를 직접 입력하면 적용됩니다.")
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundStyle(QuickTodoTheme.secondaryText)
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.bottom, 24)
+
+            Divider()
+                .overlay(QuickTodoTheme.line)
+
             sectionHeader(title: "Behavior", caption: "메뉴바 유틸리티 앱의 기본 실행 방식을 조정합니다.")
 
             Toggle(isOn: Binding(
@@ -64,8 +121,18 @@ struct SettingsView: View {
 
             Spacer(minLength: 0)
         }
-        .frame(minWidth: 520, idealWidth: 560, maxWidth: .infinity, minHeight: 420, idealHeight: 460, maxHeight: .infinity, alignment: .topLeading)
+        .frame(minWidth: 520, idealWidth: 560, maxWidth: .infinity, minHeight: 460, idealHeight: 520, maxHeight: .infinity, alignment: .topLeading)
         .background(QuickTodoTheme.canvas)
+        .onAppear {
+            syncEditorFontSizeInput()
+        }
+        .onChange(of: appModel.editorSettings.fontSize) { _ in
+            guard isFontSizeFieldFocused == false else {
+                return
+            }
+
+            syncEditorFontSizeInput()
+        }
     }
 
     private func sectionHeader(title: String, caption: String) -> some View {
@@ -81,5 +148,21 @@ struct SettingsView: View {
         .padding(.horizontal, 22)
         .padding(.top, 22)
         .padding(.bottom, 18)
+    }
+
+    private func commitEditorFontSizeInput() {
+        let trimmed = editorFontSizeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let fontSize = Double(trimmed), fontSize.isFinite, fontSize > 0 else {
+            syncEditorFontSizeInput()
+            return
+        }
+
+        appModel.setEditorFontSize(fontSize)
+        syncEditorFontSizeInput()
+    }
+
+    private func syncEditorFontSizeInput() {
+        editorFontSizeInput = appModel.editorFontSizeDisplay
     }
 }

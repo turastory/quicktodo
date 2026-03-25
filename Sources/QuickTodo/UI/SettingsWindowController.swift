@@ -3,8 +3,8 @@ import SwiftUI
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
-    private static let defaultSize = NSSize(width: 560, height: 460)
-    private static let minimumSize = NSSize(width: 520, height: 420)
+    private static let defaultSize = NSSize(width: 560, height: 520)
+    private static let minimumSize = NSSize(width: 520, height: 460)
 
     init(appModel: AppModel) {
         let rootView = SettingsView()

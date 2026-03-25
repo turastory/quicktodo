@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var launchAtLoginEnabled = true
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var pendingConflict: ExternalConflict?
+    @Published private(set) var editorSettings: EditorSettings
     @Published var editorText = ""
 
     private let documentStore = MarkdownDocumentStore()
@@ -41,6 +42,11 @@ final class AppModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
+        editorSettings = EditorSettings.load(
+            fontChoiceRawValue: defaults.string(forKey: PreferenceKey.editorFontChoice.rawValue),
+            fontSize: defaults.object(forKey: PreferenceKey.editorFontSize.rawValue) as? Double
+        )
+
         if defaults.object(forKey: PreferenceKey.launchAtLogin.rawValue) == nil {
             defaults.set(true, forKey: PreferenceKey.launchAtLogin.rawValue)
         }
@@ -74,6 +80,10 @@ final class AppModel: ObservableObject {
 
     var hotkeyDisplay: String {
         KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
+    }
+
+    var editorFontSizeDisplay: String {
+        editorSettings.fontSize.formatted(.number.precision(.fractionLength(0...2)))
     }
 
     func bootstrap() {
@@ -160,6 +170,26 @@ final class AppModel: ObservableObject {
         } catch {
             showError(error.localizedDescription)
         }
+    }
+
+    func setEditorFontChoice(_ choice: EditorFontChoice) {
+        guard editorSettings.fontChoice != choice else {
+            return
+        }
+
+        editorSettings.fontChoice = choice
+        defaults.set(choice.rawValue, forKey: PreferenceKey.editorFontChoice.rawValue)
+    }
+
+    func setEditorFontSize(_ size: Double) {
+        let sanitizedSize = EditorSettings.sanitized(size)
+
+        guard editorSettings.fontSize != sanitizedSize else {
+            return
+        }
+
+        editorSettings.fontSize = sanitizedSize
+        defaults.set(sanitizedSize, forKey: PreferenceKey.editorFontSize.rawValue)
     }
 
     private var isDirty: Bool {
@@ -320,6 +350,8 @@ final class AppModel: ObservableObject {
     private enum PreferenceKey: String {
         case selectedFilePath
         case launchAtLogin
+        case editorFontChoice
+        case editorFontSize
     }
 
     private static let markdownType = UTType(filenameExtension: "md") ?? .plainText

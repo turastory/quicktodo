@@ -32,6 +32,7 @@ struct QuickTodoRootView: View {
             EditorContentView(
                 hasSelectedFile: appModel.hasSelectedFile,
                 editorText: appModel.editorText,
+                editorSettings: appModel.editorSettings,
                 onTextChange: appModel.userEditedText,
                 onChooseFile: appModel.chooseFile
             )
@@ -84,13 +85,18 @@ private struct DocumentHeaderView: View {
 private struct EditorContentView: View {
     let hasSelectedFile: Bool
     let editorText: String
+    let editorSettings: EditorSettings
     let onTextChange: (String) -> Void
     let onChooseFile: () -> Void
 
     var body: some View {
         Group {
             if hasSelectedFile {
-                MarkdownTextView(text: editorText, onTextChange: onTextChange)
+                MarkdownTextView(
+                    text: editorText,
+                    settings: editorSettings,
+                    onTextChange: onTextChange
+                )
             } else {
                 EmptyStateView(onChooseFile: onChooseFile)
             }

@@ -3,10 +3,11 @@ import SwiftUI
 
 struct MarkdownTextView: NSViewRepresentable {
     let text: String
+    let settings: EditorSettings
     let onTextChange: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onTextChange: onTextChange)
+        Coordinator(onTextChange: onTextChange, settings: settings)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -33,7 +34,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = false
         textView.insertionPointColor = QuickTodoTheme.accentNSColor
         textView.textColor = NSColor.labelColor
-        textView.font = Self.editorFont
+        textView.font = settings.editorFont
         textView.textContainerInset = NSSize(width: 26, height: 28)
         textView.isHorizontallyResizable = false
         textView.isVerticallyResizable = true
@@ -62,19 +63,16 @@ struct MarkdownTextView: NSViewRepresentable {
             return
         }
 
+        context.coordinator.settings = settings
+
         if textView.string != text {
             context.coordinator.isApplyingModelUpdate = true
             textView.string = text
-            textView.font = Self.editorFont
             context.coordinator.applyHighlighting()
             context.coordinator.isApplyingModelUpdate = false
+        } else if context.coordinator.applySettingsIfNeeded() {
+            context.coordinator.applyHighlighting()
         }
-    }
-
-    static var editorFont: NSFont {
-        NSFont(name: "Monaspace Neon", size: 15) ??
-            NSFont(name: "SF Mono", size: 15) ??
-            .monospacedSystemFont(ofSize: 15, weight: .regular)
     }
 
     @MainActor
@@ -87,12 +85,15 @@ struct MarkdownTextView: NSViewRepresentable {
         private static let linkPattern = try? NSRegularExpression(pattern: #"(https?://[^\s\)>\]]+)"#)
 
         let onTextChange: (String) -> Void
+        var settings: EditorSettings
+        private var lastAppliedSettings: EditorSettings?
 
         weak var textView: NSTextView?
         var isApplyingModelUpdate = false
 
-        init(onTextChange: @escaping (String) -> Void) {
+        init(onTextChange: @escaping (String) -> Void, settings: EditorSettings) {
             self.onTextChange = onTextChange
+            self.settings = settings
         }
 
         deinit {
@@ -112,10 +113,27 @@ struct MarkdownTextView: NSViewRepresentable {
             textView?.window?.makeFirstResponder(textView)
         }
 
+        @discardableResult
+        func applySettingsIfNeeded() -> Bool {
+            guard let textView else {
+                return false
+            }
+
+            guard lastAppliedSettings != settings else {
+                return false
+            }
+
+            textView.font = settings.editorFont
+            lastAppliedSettings = settings
+            return true
+        }
+
         func applyHighlighting() {
             guard let textView, let textStorage = textView.textStorage else {
                 return
             }
+
+            _ = applySettingsIfNeeded()
 
             let nsString = textStorage.string as NSString
             let fullRange = NSRange(location: 0, length: nsString.length)
@@ -125,7 +143,7 @@ struct MarkdownTextView: NSViewRepresentable {
             paragraphStyle.lineHeightMultiple = 1.13
 
             let baseAttributes: [NSAttributedString.Key: Any] = [
-                .font: MarkdownTextView.editorFont,
+                .font: settings.editorFont,
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: paragraphStyle,
             ]
@@ -136,7 +154,7 @@ struct MarkdownTextView: NSViewRepresentable {
             applyPattern(Self.headingPattern, to: textStorage, in: fullRange) { match, storage in
                 storage.addAttributes([
                     .foregroundColor: QuickTodoTheme.accentNSColor,
-                    .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .semibold),
+                    .font: settings.emphasizedFont,
                 ], range: match.range(at: 1))
             }
 
@@ -158,7 +176,7 @@ struct MarkdownTextView: NSViewRepresentable {
             applyPattern(Self.quotePattern, to: textStorage, in: fullRange) { match, storage in
                 storage.addAttributes([
                     .foregroundColor: QuickTodoTheme.syntaxSecondaryNSColor,
-                    .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .medium),
+                    .font: settings.editorFont,
                 ], range: match.range(at: 1))
                 storage.addAttribute(.foregroundColor, value: QuickTodoTheme.syntaxSecondaryNSColor, range: match.range(at: 2))
             }
