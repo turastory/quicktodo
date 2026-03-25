@@ -32,8 +32,9 @@ final class AppModel: ObservableObject {
     @Published var editorText = ""
 
     private let documentStore = MarkdownDocumentStore()
-    private let defaults = UserDefaults.standard
-    private let editorFontLibrary = EditorFontLibrary()
+    private let defaults: UserDefaults
+    private let editorFontLibrary: EditorFontLibrary
+    private let hotkeyDisplayOverride: String?
 
     private var directoryMonitor: DirectoryMonitor?
     private var hasBootstrapped = false
@@ -42,7 +43,16 @@ final class AppModel: ObservableObject {
     private var lastNonErrorSyncState: SyncState = .idle
     private var cancellables = Set<AnyCancellable>()
 
-    private init() {
+    private init(
+        defaults: UserDefaults = .standard,
+        editorFontLibrary: EditorFontLibrary = EditorFontLibrary(),
+        observeDefaults: Bool = true,
+        hotkeyDisplayOverride: String? = nil
+    ) {
+        self.defaults = defaults
+        self.editorFontLibrary = editorFontLibrary
+        self.hotkeyDisplayOverride = hotkeyDisplayOverride
+
         recentEditorFontNames = []
         editorSettings = EditorSettings.load(
             fontName: nil,
@@ -65,11 +75,13 @@ final class AppModel: ObservableObject {
 
         launchAtLoginEnabled = defaults.bool(forKey: PreferenceKey.launchAtLogin.rawValue)
 
-        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+        if observeDefaults {
+            NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &cancellables)
+        }
     }
 
     var hasSelectedFile: Bool {
@@ -91,7 +103,11 @@ final class AppModel: ObservableObject {
     }
 
     var hotkeyDisplay: String {
-        KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
+        if let hotkeyDisplayOverride {
+            return hotkeyDisplayOverride
+        }
+
+        return KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
     }
 
     var editorFontSizeDisplay: String {
@@ -380,4 +396,49 @@ final class AppModel: ObservableObject {
 
     private static let markdownType = UTType(filenameExtension: "md") ?? .plainText
     private static let allowedContentTypes = [markdownType, .plainText]
+}
+
+extension AppModel {
+    enum SnapshotFixture {
+        case quickTodoEmptyState
+        case settings
+    }
+
+    static func snapshotPreview(for fixture: SnapshotFixture) -> AppModel {
+        let suiteName = "QuickTodoSnapshotPreview.\(fixture).\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let fontLibrary = EditorFontLibrary(
+            allFontNames: ["Avenir Next", "Helvetica Neue", "Menlo"],
+            recommendedFontNames: ["Menlo", "Avenir Next"]
+        )
+        let appModel = AppModel(
+            defaults: defaults,
+            editorFontLibrary: fontLibrary,
+            observeDefaults: false,
+            hotkeyDisplayOverride: "⌘."
+        )
+
+        switch fixture {
+        case .quickTodoEmptyState:
+            appModel.syncState = .idle
+            appModel.editorText = ""
+
+        case .settings:
+            appModel.selectedFileURL = URL(fileURLWithPath: "/Users/snapshot/Obsidian/Todo.md")
+            appModel.syncState = .saved(Date(timeIntervalSinceReferenceDate: 0))
+            appModel.editorText = "- Inbox\n- Ship snapshot tests"
+            appModel.lastLoadedContent = appModel.editorText
+            appModel.editorSettings = EditorSettings(
+                fontName: "Menlo",
+                fontSize: 16,
+                fontLibrary: fontLibrary
+            )
+            appModel.recentEditorFontNames = ["Menlo", "Avenir Next"]
+            appModel.launchAtLoginEnabled = true
+        }
+
+        return appModel
+    }
 }

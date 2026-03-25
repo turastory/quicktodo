@@ -6,6 +6,18 @@ struct SettingsView: View {
     @FocusState private var isFontSizeFieldFocused: Bool
     @State private var editorFontSizeInput = ""
     @State private var editorFontSearchText = ""
+    private let shortcutRecorder: AnyView
+
+    init(shortcutRecorder: AnyView? = nil) {
+        if let shortcutRecorder {
+            self.shortcutRecorder = shortcutRecorder
+        } else {
+            self.shortcutRecorder = AnyView(
+                KeyboardShortcuts.Recorder(for: .toggleQuickTodo)
+                    .labelsHidden()
+            )
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,8 +44,7 @@ struct SettingsView: View {
             sectionHeader(title: "Hotkey", caption: "어디서든 패널을 열고 닫는 글로벌 단축키입니다.")
 
             VStack(alignment: .leading, spacing: 12) {
-                KeyboardShortcuts.Recorder(for: .toggleQuickTodo)
-                    .labelsHidden()
+                shortcutRecorder
 
                 Text("기본값은 `⌘.` 이고, 충돌이 있다면 여기서 바꾸면 됩니다.")
                     .font(.system(size: 12, weight: .regular, design: .default))
