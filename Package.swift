@@ -21,5 +21,10 @@ let package = Package(
             ],
             path: "Sources/QuickTodo"
         ),
+        .testTarget(
+            name: "QuickTodoTests",
+            dependencies: ["QuickTodo"],
+            path: "Tests/QuickTodoTests"
+        ),
     ]
 )
