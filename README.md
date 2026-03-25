@@ -24,10 +24,9 @@ swift run
 릴리스용 앱 번들은 아래 스크립트로 생성합니다.
 
 ```bash
-chmod +x Scripts/build-app.sh Scripts/create-release-zip.sh Scripts/render-cask.sh
+chmod +x Scripts/release-common.sh Scripts/build-app.sh Scripts/create-release-zip.sh
 Scripts/build-app.sh release 0.1.0 1
 Scripts/create-release-zip.sh 0.1.0 1
-Scripts/render-cask.sh 0.1.0 "$(cat dist/QuickTodo.sha256)"
 ```
 
 생성물:
@@ -35,7 +34,6 @@ Scripts/render-cask.sh 0.1.0 "$(cat dist/QuickTodo.sha256)"
 - `dist/QuickTodo.app`
 - `dist/QuickTodo.zip`
 - `dist/QuickTodo.sha256`
-- `Homebrew/quicktodo.rb`
 
 ## Homebrew Cask
 
@@ -46,35 +44,40 @@ Scripts/render-cask.sh 0.1.0 "$(cat dist/QuickTodo.sha256)"
 - tap 식별자: `turastory/tap`
 - cask token: `quicktodo`
 
-릴리스 태그 `vX.Y.Z`가 올라가면 GitHub Actions가 zip, checksum, cask 파일을 생성하고, `HOMEBREW_TAP_GITHUB_TOKEN` secret 이 설정되어 있으면 tap 저장소의 `Casks/quicktodo.rb`까지 자동 갱신합니다.
+릴리스 태그 `vX.Y.Z`가 올라가면 app 저장소의 GitHub Actions가 zip과 checksum을 생성하고 GitHub Release를 만든 뒤, tap 저장소로 `repository_dispatch`를 보내 cask 생성/검증/커밋을 위임합니다.
 
 자동화 전제:
 
 - 앱 저장소 GitHub Actions secret: `HOMEBREW_TAP_GITHUB_TOKEN`
-- 권한: `turastory/homebrew-tap` 저장소에 push 가능한 classic PAT 또는 fine-grained token
-- 기본 대상 브랜치: `main`
+- 권한: `turastory/homebrew-tap` 저장소에 dispatch 요청을 보낼 수 있는 classic PAT 또는 fine-grained token
+- cask source of truth: `turastory/homebrew-tap`
 
 직접 공개할 때는 아래 스크립트를 순서대로 사용하면 됩니다.
 
 ```bash
-chmod +x Scripts/publish-release.sh Scripts/publish-tap.sh Scripts/update-brewfile.sh
+chmod +x Scripts/release-common.sh Scripts/publish-release.sh Scripts/dispatch-tap-update.sh
 Scripts/publish-release.sh 0.1.0 1
-Scripts/publish-tap.sh 0.1.0 "$(cat dist/QuickTodo.sha256)"
-Scripts/update-brewfile.sh
 ```
 
-스크립트들은 기본값으로 `turastory/quicktodo`, `turastory/homebrew-tap`, `quicktodo`를 사용하고, 필요하면 아래 환경 변수로 바꿀 수 있습니다.
+릴리스는 이미 만들어졌고 tap 갱신만 다시 보내고 싶다면 아래 스크립트를 따로 실행하면 됩니다.
+
+```bash
+Scripts/dispatch-tap-update.sh 0.1.0 "$(cat dist/QuickTodo.sha256)" v0.1.0
+```
+
+스크립트들은 기본값으로 `turastory/quicktodo`, `turastory/homebrew-tap`, `quicktodo`, `ventura`를 사용하고, 필요하면 아래 환경 변수로 바꿀 수 있습니다.
 
 ```bash
 export QUICKTODO_APP_REPO="owner/quicktodo"
 export QUICKTODO_TAP_REPO="owner/homebrew-tap"
 export QUICKTODO_TAP_NAME="owner/tap"
 export QUICKTODO_CASK_TOKEN="quicktodo"
+export QUICKTODO_MIN_MACOS="ventura"
 ```
 
-## Dotfiles
+## Brewfile
 
-tap 저장소가 실제로 공개된 뒤 `~/dotfiles/Brewfile`에 아래 두 줄을 추가하면 됩니다.
+tap 저장소가 공개된 뒤 로컬 `Brewfile`에는 아래 두 줄만 추가하면 됩니다.
 
 ```ruby
 tap "turastory/tap"

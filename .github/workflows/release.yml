@@ -10,7 +10,7 @@ env:
   QUICKTODO_TAP_REPO: turastory/homebrew-tap
   QUICKTODO_CASK_TOKEN: quicktodo
   QUICKTODO_APP_NAME: QuickTodo
-  QUICKTODO_APP_DESC: Single-file Markdown todo panel for macOS
+  QUICKTODO_MIN_MACOS: ventura
 
 jobs:
   build-release:
@@ -29,9 +29,8 @@ jobs:
       - name: Build release zip
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          chmod +x Scripts/build-app.sh Scripts/create-release-zip.sh Scripts/render-cask.sh
+          chmod +x Scripts/release-common.sh Scripts/build-app.sh Scripts/create-release-zip.sh
           Scripts/create-release-zip.sh "$VERSION" "$GITHUB_RUN_NUMBER"
-          Scripts/render-cask.sh "$VERSION" "$(cat dist/QuickTodo.sha256)"
 
       - name: Upload GitHub release assets
         uses: softprops/action-gh-release@v2
@@ -39,15 +38,12 @@ jobs:
           files: |
             dist/QuickTodo.zip
             dist/QuickTodo.sha256
-            Homebrew/quicktodo.rb
 
-      - name: Publish tap cask
+      - name: Dispatch tap cask update
         if: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN != '' }}
         env:
           GH_TOKEN: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN }}
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          chmod +x Scripts/publish-tap.sh
-          Scripts/publish-tap.sh "$VERSION" "$(cat dist/QuickTodo.sha256)"
+          chmod +x Scripts/release-common.sh Scripts/dispatch-tap-update.sh
+          Scripts/dispatch-tap-update.sh "$VERSION" "$(cat dist/QuickTodo.sha256)" "$GITHUB_REF_NAME"

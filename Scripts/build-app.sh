@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/release-common.sh"
 CONFIGURATION="${1:-release}"
 VERSION="${2:-0.1.0}"
 BUILD_NUMBER="${3:-1}"
 BIN_DIR="$(swift build -c "$CONFIGURATION" --package-path "$ROOT_DIR" --show-bin-path)"
-APP_DIR="$ROOT_DIR/dist/QuickTodo.app"
+APP_DIR="$ROOT_DIR/dist/$QUICKTODO_APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -19,8 +19,8 @@ swift build -c "$CONFIGURATION" --package-path "$ROOT_DIR"
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
-cp "$BIN_DIR/QuickTodo" "$MACOS_DIR/QuickTodo"
-chmod +x "$MACOS_DIR/QuickTodo"
+cp "$BIN_DIR/$QUICKTODO_APP_NAME" "$MACOS_DIR/$QUICKTODO_APP_NAME"
+chmod +x "$MACOS_DIR/$QUICKTODO_APP_NAME"
 
 sed \
   -e "s/__VERSION__/$VERSION/g" \
