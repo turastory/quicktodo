@@ -33,6 +33,14 @@ jobs:
           Scripts/create-release-zip.sh "$VERSION" "$GITHUB_RUN_NUMBER"
           Scripts/render-cask.sh "$VERSION" "$(cat dist/QuickTodo.sha256)"
 
+      - name: Upload GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/QuickTodo.zip
+            dist/QuickTodo.sha256
+            Homebrew/quicktodo.rb
+
       - name: Publish tap cask
         if: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN != '' }}
         env:
@@ -43,11 +51,3 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           chmod +x Scripts/publish-tap.sh
           Scripts/publish-tap.sh "$VERSION" "$(cat dist/QuickTodo.sha256)"
-
-      - name: Upload GitHub release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/QuickTodo.zip
-            dist/QuickTodo.sha256
-            Homebrew/quicktodo.rb

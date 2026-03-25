@@ -11,6 +11,7 @@ GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-QuickTodo Release Bot}"
 GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-quicktodo-release-bot@users.noreply.github.com}"
 WORK_DIR="$(mktemp -d)"
 TAP_DIR="$WORK_DIR/homebrew-tap"
+TAP_REMOTE_URL="https://github.com/$TAP_REPO.git"
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -19,14 +20,18 @@ trap cleanup EXIT
 
 "$ROOT_DIR/Scripts/render-cask.sh" "$VERSION" "$SHA256"
 
-gh auth status >/dev/null
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  TAP_REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/$TAP_REPO.git"
+fi
+
+gh auth status >/dev/null || true
 gh auth setup-git >/dev/null 2>&1 || true
 
 if gh repo view "$TAP_REPO" >/dev/null 2>&1; then
-  gh repo clone "$TAP_REPO" "$TAP_DIR"
+  git clone "$TAP_REMOTE_URL" "$TAP_DIR"
 else
   gh repo create "$TAP_REPO" --public --description "Homebrew tap for QuickTodo and personal tools"
-  gh repo clone "$TAP_REPO" "$TAP_DIR"
+  git clone "$TAP_REMOTE_URL" "$TAP_DIR"
 fi
 
 git -C "$TAP_DIR" config user.name "$GIT_AUTHOR_NAME"
