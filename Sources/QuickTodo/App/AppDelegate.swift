@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = AppMenuController.buildMainMenu()
 
         panelController = QuickTodoPanelController(appModel: appModel)
-        settingsWindowController = SettingsWindowController(appModel: appModel)
         statusBarController = StatusBarController(delegate: self)
 
         KeyboardShortcuts.onKeyUp(for: .toggleQuickTodo) { [weak self] in
@@ -21,6 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         appModel.bootstrap()
+
+        if appModel.shouldShowPanelOnLaunch {
+            panelController?.show()
+        }
     }
 
     @objc func togglePanel(_ sender: Any?) {
@@ -32,6 +35,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openSettings(_ sender: Any?) {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController(appModel: appModel)
+        }
+
         settingsWindowController?.showWindow()
     }
 

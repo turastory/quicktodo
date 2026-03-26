@@ -1,3 +1,4 @@
+import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
@@ -13,8 +14,8 @@ struct SettingsView: View {
             self.shortcutRecorder = shortcutRecorder
         } else {
             self.shortcutRecorder = AnyView(
-                KeyboardShortcuts.Recorder(for: .toggleQuickTodo)
-                    .labelsHidden()
+                ShortcutRecorderField(name: .toggleQuickTodo)
+                    .frame(width: 130, height: 32)
             )
         }
     }
@@ -178,6 +179,120 @@ struct SettingsView: View {
 
     private func syncEditorFontSizeInput() {
         editorFontSizeInput = appModel.editorFontSizeDisplay
+    }
+}
+
+private struct ShortcutRecorderField: NSViewRepresentable {
+    let name: KeyboardShortcuts.Name
+
+    func makeNSView(context: Context) -> ShortcutRecorderButton {
+        ShortcutRecorderButton(shortcutName: name)
+    }
+
+    func updateNSView(_ nsView: ShortcutRecorderButton, context: Context) {
+        nsView.shortcutName = name
+        nsView.refreshDisplay()
+    }
+}
+
+@MainActor
+private final class ShortcutRecorderButton: NSButton {
+    var shortcutName: KeyboardShortcuts.Name
+    private var eventMonitor: Any?
+
+    init(shortcutName: KeyboardShortcuts.Name) {
+        self.shortcutName = shortcutName
+        super.init(frame: .zero)
+
+        bezelStyle = .rounded
+        isBordered = true
+        setButtonType(.momentaryPushIn)
+        target = self
+        action = #selector(beginRecording)
+        font = .monospacedSystemFont(ofSize: 13, weight: .semibold)
+        focusRingType = .default
+        refreshDisplay()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    func refreshDisplay() {
+        title = KeyboardShortcuts.getShortcut(for: shortcutName)?.description ?? "Set Shortcut"
+    }
+
+    @objc private func beginRecording() {
+        guard eventMonitor == nil else {
+            return
+        }
+
+        title = "Press Shortcut"
+
+        eventMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.keyDown, .leftMouseDown, .rightMouseDown]
+        ) { [weak self] event in
+            guard let self else {
+                return event
+            }
+
+            switch event.type {
+            case .leftMouseDown, .rightMouseDown:
+                self.stopRecording(refreshDisplay: true)
+                return event
+
+            case .keyDown:
+                return self.handleRecordingKeyEvent(event)
+
+            default:
+                return event
+            }
+        }
+    }
+
+    private func handleRecordingKeyEvent(_ event: NSEvent) -> NSEvent? {
+        if event.keyCode == 53 {
+            stopRecording(refreshDisplay: true)
+            return nil
+        }
+
+        if (event.keyCode == 51 || event.keyCode == 117) && normalizedModifiers(for: event).isEmpty {
+            KeyboardShortcuts.setShortcut(nil, for: shortcutName)
+            stopRecording(refreshDisplay: true)
+            return nil
+        }
+
+        guard let shortcut = KeyboardShortcuts.Shortcut(event: event) else {
+            NSSound.beep()
+            return nil
+        }
+
+        guard shortcut.modifiers.isEmpty == false else {
+            NSSound.beep()
+            return nil
+        }
+
+        KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)
+        stopRecording(refreshDisplay: true)
+        return nil
+    }
+
+    private func normalizedModifiers(for event: NSEvent) -> NSEvent.ModifierFlags {
+        event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting([.capsLock, .numericPad, .function])
+    }
+
+    private func stopRecording(refreshDisplay: Bool) {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
+
+        if refreshDisplay {
+            self.refreshDisplay()
+        }
     }
 }
 

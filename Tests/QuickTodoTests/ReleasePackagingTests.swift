@@ -89,6 +89,22 @@ struct ReleasePackagingTests {
         ).trimmingCharacters(in: .whitespacesAndNewlines)
 
         #expect(iconName == "QuickTodo.icns")
+
+        let launchResult = try launchApp(
+            appURL.appendingPathComponent("Contents/MacOS/QuickTodo")
+        )
+
+        #expect(
+            launchResult.wasRunningAfterDelay,
+            Comment(rawValue: """
+            App terminated shortly after launch.
+            \(launchResult.output)
+            """)
+        )
+        #expect(
+            !launchResult.output.contains("could not load resource bundle"),
+            Comment(rawValue: launchResult.output)
+        )
     }
 
     private func repoRoot(filePath: StaticString = #filePath) throws -> URL {
@@ -132,5 +148,26 @@ struct ReleasePackagingTests {
         )
 
         return output
+    }
+
+    private func launchApp(_ executableURL: URL) throws -> (wasRunningAfterDelay: Bool, output: String) {
+        let pipe = Pipe()
+        let process = Process()
+        process.executableURL = executableURL
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        Thread.sleep(forTimeInterval: 2)
+        let wasRunningAfterDelay = process.isRunning
+
+        if process.isRunning {
+            process.terminate()
+        }
+
+        process.waitUntilExit()
+        let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(decoding: outputData, as: UTF8.self)
+        return (wasRunningAfterDelay, output)
     }
 }

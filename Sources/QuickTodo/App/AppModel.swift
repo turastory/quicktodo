@@ -118,6 +118,12 @@ final class AppModel: ObservableObject {
         editorSettings.fontName
     }
 
+    var shouldShowPanelOnLaunch: Bool {
+        LaunchPresentationPolicy.shouldShowPanelOnLaunch(
+            selectedFilePath: defaults.string(forKey: PreferenceKey.selectedFilePath.rawValue)
+        )
+    }
+
     func bootstrap() {
         guard hasBootstrapped == false else {
             return

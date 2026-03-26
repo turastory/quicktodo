@@ -13,6 +13,7 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 PLIST_TEMPLATE="$ROOT_DIR/AppResources/Info.plist"
 PLIST_OUTPUT="$CONTENTS_DIR/Info.plist"
 RESOURCE_BUNDLE="$BIN_DIR/KeyboardShortcuts_KeyboardShortcuts.bundle"
+RESOURCE_BUNDLE_DESTINATION="$RESOURCES_DIR/KeyboardShortcuts_KeyboardShortcuts.bundle"
 ICON_SOURCE="$ROOT_DIR/AppResources/QuickTodo.icns"
 
 swift build -c "$CONFIGURATION" --package-path "$ROOT_DIR"
@@ -29,7 +30,8 @@ sed \
   "$PLIST_TEMPLATE" > "$PLIST_OUTPUT"
 
 if [[ -d "$RESOURCE_BUNDLE" ]]; then
-  cp -R "$RESOURCE_BUNDLE" "$RESOURCES_DIR/"
+  rm -rf "$RESOURCE_BUNDLE_DESTINATION"
+  cp -R "$RESOURCE_BUNDLE" "$RESOURCE_BUNDLE_DESTINATION"
 fi
 
 if [[ ! -f "$ICON_SOURCE" ]]; then
