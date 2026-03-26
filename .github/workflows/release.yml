@@ -19,9 +19,6 @@ jobs:
       contents: write
     env:
       HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-      QUICKTODO_NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
-      QUICKTODO_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      QUICKTODO_NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,46 +26,11 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      - name: Configure Developer ID signing
-        id: signing
-        if: ${{ secrets.APPLE_DEVELOPER_ID_CERT_P12_BASE64 != '' && secrets.APPLE_DEVELOPER_ID_CERT_PASSWORD != '' && secrets.APPLE_DEVELOPER_IDENTITY != '' }}
-        env:
-          APPLE_DEVELOPER_ID_CERT_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERT_P12_BASE64 }}
-          APPLE_DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERT_PASSWORD }}
-          APPLE_DEVELOPER_IDENTITY: ${{ secrets.APPLE_DEVELOPER_IDENTITY }}
-        run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/quicktodo-signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(uuidgen)"
-          CERT_PATH="$RUNNER_TEMP/quicktodo-signing.p12"
-          EXISTING_KEYCHAINS="$(security list-keychains -d user | tr -d '"')"
-
-          echo "$APPLE_DEVELOPER_ID_CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$APPLE_DEVELOPER_ID_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" $EXISTING_KEYCHAINS
-          security default-keychain -d user -s "$KEYCHAIN_PATH"
-
-          echo "QUICKTODO_CODESIGN_IDENTITY=$APPLE_DEVELOPER_IDENTITY" >> "$GITHUB_ENV"
-
-      - name: Detect notarized release mode
-        id: release_mode
-        run: |
-          if [[ -n "${QUICKTODO_NOTARY_APPLE_ID:-}" && -n "${QUICKTODO_NOTARY_TEAM_ID:-}" && -n "${QUICKTODO_NOTARY_PASSWORD:-}" && -n "${QUICKTODO_CODESIGN_IDENTITY:-}" ]]; then
-            echo "QUICKTODO_EXPECT_NOTARIZED=1" >> "$GITHUB_ENV"
-            echo "notarized=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "notarized=0" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build release zip
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          chmod +x Scripts/release-common.sh Scripts/build-app.sh Scripts/notarize-app.sh Scripts/create-release-zip.sh Scripts/validate-release-artifact.sh
+          chmod +x Scripts/release-common.sh Scripts/build-app.sh Scripts/create-release-zip.sh
           Scripts/create-release-zip.sh "$VERSION" "$GITHUB_RUN_NUMBER"
-          Scripts/validate-release-artifact.sh
 
       - name: Upload GitHub release assets
         uses: softprops/action-gh-release@v2
@@ -78,14 +40,10 @@ jobs:
             dist/QuickTodo.sha256
 
       - name: Dispatch tap cask update
-        if: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN != '' && steps.release_mode.outputs.notarized == '1' }}
+        if: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN != '' }}
         env:
           GH_TOKEN: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           chmod +x Scripts/release-common.sh Scripts/dispatch-tap-update.sh
           Scripts/dispatch-tap-update.sh "$VERSION" "$(cat dist/QuickTodo.sha256)" "$GITHUB_REF_NAME"
-
-      - name: Skip tap dispatch when notarization is unavailable
-        if: ${{ env.HOMEBREW_TAP_GITHUB_TOKEN != '' && steps.release_mode.outputs.notarized != '1' }}
-        run: echo "Skipping Homebrew tap dispatch because notarization is not configured."

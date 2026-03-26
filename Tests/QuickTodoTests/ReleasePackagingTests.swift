@@ -41,7 +41,7 @@ struct ReleasePackagingTests {
             "/bin/bash",
             arguments: [
                 "Scripts/create-release-zip.sh",
-                "0.1.3",
+                "0.1.4",
                 "999",
             ],
             currentDirectoryURL: checkoutDirectory
@@ -71,6 +71,24 @@ struct ReleasePackagingTests {
                 appURL.path(percentEncoded: false),
             ]
         )
+
+        let iconURL = appURL
+            .appendingPathComponent("Contents/Resources/QuickTodo.icns")
+        let plistURL = appURL
+            .appendingPathComponent("Contents/Info.plist")
+
+        #expect(FileManager.default.fileExists(atPath: iconURL.path(percentEncoded: false)))
+
+        let iconName = try run(
+            "/usr/libexec/PlistBuddy",
+            arguments: [
+                "-c",
+                "Print :CFBundleIconFile",
+                plistURL.path(percentEncoded: false),
+            ]
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        #expect(iconName == "QuickTodo.icns")
     }
 
     private func repoRoot(filePath: StaticString = #filePath) throws -> URL {

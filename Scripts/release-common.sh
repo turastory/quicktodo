@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+QUICKTODO_APP_REPO="${QUICKTODO_APP_REPO:-turastory/quicktodo}"
+QUICKTODO_TAP_REPO="${QUICKTODO_TAP_REPO:-turastory/homebrew-tap}"
+QUICKTODO_TAP_NAME="${QUICKTODO_TAP_NAME:-turastory/tap}"
+QUICKTODO_TAP_BRANCH="${QUICKTODO_TAP_BRANCH:-main}"
+QUICKTODO_CASK_TOKEN="${QUICKTODO_CASK_TOKEN:-quicktodo}"
+QUICKTODO_APP_NAME="${QUICKTODO_APP_NAME:-QuickTodo}"
+QUICKTODO_MIN_MACOS="${QUICKTODO_MIN_MACOS:-ventura}"
