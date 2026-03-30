@@ -1,6 +1,18 @@
 import AppKit
 import SwiftUI
 
+private final class EditorTextView: NSTextView {
+    var onBacktab: (() -> Bool)?
+
+    override func insertBacktab(_ sender: Any?) {
+        if onBacktab?() == true {
+            return
+        }
+
+        super.insertBacktab(sender)
+    }
+}
+
 struct MarkdownTextView: NSViewRepresentable {
     let text: String
     let settings: EditorSettings
@@ -18,7 +30,7 @@ struct MarkdownTextView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
 
-        let textView = NSTextView()
+        let textView = EditorTextView()
         textView.delegate = context.coordinator
         textView.string = text
         textView.backgroundColor = .clear
@@ -44,6 +56,9 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
         textView.textContainer?.lineFragmentPadding = 0
+        textView.onBacktab = { [weak coordinator = context.coordinator] in
+            coordinator?.outdentSelection() ?? false
+        }
 
         context.coordinator.textView = textView
         context.coordinator.applyHighlighting()
@@ -192,6 +207,31 @@ struct MarkdownTextView: NSViewRepresentable {
             textStorage.endEditing()
             textView.typingAttributes = baseAttributes
             textView.selectedRanges = selectedRanges
+        }
+
+        func outdentSelection() -> Bool {
+            guard
+                let textView,
+                let textStorage = textView.textStorage
+            else {
+                return false
+            }
+
+            let selectedRange = textView.selectedRange()
+            let fullRange = NSRange(location: 0, length: textStorage.length)
+
+            guard let edit = MarkdownIndentation.outdent(text: textView.string, selectedRange: selectedRange) else {
+                return true
+            }
+
+            guard textView.shouldChangeText(in: fullRange, replacementString: edit.text) else {
+                return true
+            }
+
+            textStorage.replaceCharacters(in: fullRange, with: edit.text)
+            textView.setSelectedRange(edit.selectedRange)
+            textView.didChangeText()
+            return true
         }
 
         private func applyPattern(
