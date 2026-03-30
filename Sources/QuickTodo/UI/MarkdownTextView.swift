@@ -120,7 +120,7 @@ struct MarkdownTextView: NSViewRepresentable {
                 return
             }
 
-            applyHighlighting()
+            applyHighlighting(restoringSelection: false)
             onTextChange(textView.string)
         }
 
@@ -143,7 +143,7 @@ struct MarkdownTextView: NSViewRepresentable {
             return true
         }
 
-        func applyHighlighting() {
+        func applyHighlighting(restoringSelection: Bool = true) {
             guard let textView, let textStorage = textView.textStorage else {
                 return
             }
@@ -152,7 +152,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
             let nsString = textStorage.string as NSString
             let fullRange = NSRange(location: 0, length: nsString.length)
-            let selectedRanges = textView.selectedRanges
+            let selectedRanges = restoringSelection ? textView.selectedRanges : nil
 
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineHeightMultiple = 1.13
@@ -206,7 +206,9 @@ struct MarkdownTextView: NSViewRepresentable {
 
             textStorage.endEditing()
             textView.typingAttributes = baseAttributes
-            textView.selectedRanges = selectedRanges
+            if let selectedRanges {
+                textView.selectedRanges = selectedRanges
+            }
         }
 
         func outdentSelection() -> Bool {
