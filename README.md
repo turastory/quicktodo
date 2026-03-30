@@ -5,7 +5,7 @@ QuickTodo는 Obsidian/iCloud Drive 안의 Markdown 파일 하나를 그대로 so
 ## What It Does
 
 - 단일 Markdown 파일 직접 열기/자동 저장
-- 글로벌 토글 단축키 기본값 `⌘.`
+- 글로벌 토글 단축키 기본값 `⌥.`
 - 항상 위에 뜨는 resizable panel
 - 외부 변경 감지와 충돌 배너
 - 메뉴바 유틸리티 + 로그인 시 자동 실행

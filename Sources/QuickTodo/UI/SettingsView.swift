@@ -48,7 +48,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     shortcutRecorder
 
-                    Text("기본값은 `⌘.` 이고, 충돌이 있다면 여기서 바꾸면 됩니다.")
+                    Text("기본값은 `⌥.` 이고, 충돌이 있다면 여기서 바꾸면 됩니다.")
                         .font(.system(size: 12, weight: .regular, design: .default))
                         .foregroundStyle(QuickTodoTheme.secondaryText)
                 }

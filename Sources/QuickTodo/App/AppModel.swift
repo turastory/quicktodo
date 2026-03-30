@@ -107,7 +107,7 @@ final class AppModel: ObservableObject {
             return hotkeyDisplayOverride
         }
 
-        return KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌘."
+        return KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌥."
     }
 
     var editorFontSizeDisplay: String {
@@ -423,7 +423,7 @@ extension AppModel {
             defaults: defaults,
             editorFontLibrary: fontLibrary,
             observeDefaults: false,
-            hotkeyDisplayOverride: "⌘."
+            hotkeyDisplayOverride: "⌥."
         )
 
         switch fixture {
