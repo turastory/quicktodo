@@ -28,6 +28,18 @@ struct MarkdownIndentationTests {
     }
 
     @Test
+    func keepsSelectionEndpointsStableAcrossMultipleIndentDeletions() {
+        let text = "\tA\n\tB"
+        let selection = NSRange(location: 1, length: 3)
+
+        let edit = MarkdownIndentation.outdent(text: text, selectedRange: selection)
+
+        #expect(edit != nil)
+        #expect(edit?.text == "A\nB")
+        #expect(edit?.selectedRange == NSRange(location: 0, length: 2))
+    }
+
+    @Test
     func removeLeadingSpacesAsSingleIndentLevel() {
         let text = "    first"
         let selection = NSRange(location: 6, length: 0)

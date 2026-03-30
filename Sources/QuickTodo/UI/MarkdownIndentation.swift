@@ -73,19 +73,22 @@ struct MarkdownIndentation {
     }
 
     private static func transformedPosition(_ position: Int, byDeleting deletions: [NSRange]) -> Int {
-        deletions.reduce(position) { currentPosition, deletion in
+        var removedLength = 0
+
+        for deletion in deletions {
             let deletionEnd = NSMaxRange(deletion)
 
-            if currentPosition >= deletionEnd {
-                return currentPosition - deletion.length
+            if position >= deletionEnd {
+                removedLength += deletion.length
+                continue
             }
 
-            if currentPosition >= deletion.location {
-                return deletion.location
+            if position >= deletion.location {
+                return deletion.location - removedLength
             }
-
-            return currentPosition
         }
+
+        return position - removedLength
     }
 
     private static func clamp(_ range: NSRange, maxLength: Int) -> NSRange {
