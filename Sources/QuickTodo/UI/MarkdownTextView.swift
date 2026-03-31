@@ -81,16 +81,16 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.settings = settings
 
         if textView.string != text {
-            let previousSelection = textView.selectedRanges
+            let previousSelection = textView.selectedRange()
             let shouldRestoreFirstResponder = textView.window?.firstResponder == textView
+            let shouldPreserveSelection = textView.window?.firstResponder == textView && textView.hasMarkedText() == false
 
             context.coordinator.isApplyingModelUpdate = true
             textView.string = text
             context.coordinator.applyHighlighting(restoringSelection: false)
-            textView.selectedRanges = context.coordinator.clampedSelectionRanges(
-                previousSelection,
-                in: textView.string
-            )
+            if shouldPreserveSelection {
+                textView.setSelectedRange(context.coordinator.clampedRange(previousSelection, in: textView.string))
+            }
             if shouldRestoreFirstResponder {
                 textView.window?.makeFirstResponder(textView)
             }
@@ -162,7 +162,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
             let nsString = textStorage.string as NSString
             let fullRange = NSRange(location: 0, length: nsString.length)
-            let selectedRanges = restoringSelection ? textView.selectedRanges : nil
+            let selectedRange = restoringSelection ? textView.selectedRange() : nil
 
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineHeightMultiple = 1.13
@@ -216,8 +216,8 @@ struct MarkdownTextView: NSViewRepresentable {
 
             textStorage.endEditing()
             textView.typingAttributes = baseAttributes
-            if let selectedRanges {
-                textView.selectedRanges = selectedRanges
+            if let selectedRange {
+                textView.setSelectedRange(clampedRange(selectedRange, in: textView.string))
             }
         }
 
@@ -261,18 +261,15 @@ struct MarkdownTextView: NSViewRepresentable {
             }
         }
 
-        func clampedSelectionRanges(_ selectedRanges: [NSValue], in text: String) -> [NSValue] {
+        func clampedRange(_ selectedRange: NSRange, in text: String) -> NSRange {
             let maxLength = text.utf16.count
-            return selectedRanges.map { selectedValue in
-                var range = selectedValue.rangeValue
-                if range.location == NSNotFound {
-                    return selectedValue
-                }
-
-                let clampedLocation = min(range.location, maxLength)
-                let clampedLength = min(range.length, max(0, maxLength - clampedLocation))
-                return NSValue(range: NSRange(location: clampedLocation, length: clampedLength))
+            if selectedRange.location == NSNotFound {
+                return NSRange(location: maxLength, length: 0)
             }
+
+            let clampedLocation = min(selectedRange.location, maxLength)
+            let clampedLength = min(selectedRange.length, max(0, maxLength - clampedLocation))
+            return NSRange(location: clampedLocation, length: clampedLength)
         }
     }
 }
