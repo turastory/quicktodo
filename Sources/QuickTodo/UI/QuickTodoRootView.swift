@@ -7,7 +7,8 @@ struct QuickTodoRootView: View {
         VStack(spacing: 0) {
             DocumentHeaderView(
                 fileDisplayName: appModel.fileDisplayName,
-                filePathDisplay: appModel.filePathDisplay
+                filePathDisplay: appModel.filePathDisplay,
+                versionBadgeText: appModel.appVersionBadgeText
             )
 
             if let pendingConflict = appModel.pendingConflict {
@@ -55,9 +56,10 @@ struct QuickTodoRootView: View {
 private struct DocumentHeaderView: View {
     let fileDisplayName: String
     let filePathDisplay: String
+    let versionBadgeText: String
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(fileDisplayName)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
@@ -74,6 +76,18 @@ private struct DocumentHeaderView: View {
             }
 
             Spacer()
+
+            Text(versionBadgeText)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundStyle(QuickTodoTheme.secondaryText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .overlay(
+                    Capsule()
+                        .stroke(QuickTodoTheme.line, lineWidth: 1)
+                )
+                .accessibilityLabel("앱 버전")
+                .accessibilityValue(versionBadgeText)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)

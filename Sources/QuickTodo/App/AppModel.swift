@@ -35,6 +35,7 @@ final class AppModel: ObservableObject {
     private let defaults: UserDefaults
     private let editorFontLibrary: EditorFontLibrary
     private let hotkeyDisplayOverride: String?
+    private let appVersionBadgeOverride: String?
 
     private var directoryMonitor: DirectoryMonitor?
     private var hasBootstrapped = false
@@ -47,11 +48,13 @@ final class AppModel: ObservableObject {
         defaults: UserDefaults = .standard,
         editorFontLibrary: EditorFontLibrary = EditorFontLibrary(),
         observeDefaults: Bool = true,
-        hotkeyDisplayOverride: String? = nil
+        hotkeyDisplayOverride: String? = nil,
+        appVersionBadgeOverride: String? = nil
     ) {
         self.defaults = defaults
         self.editorFontLibrary = editorFontLibrary
         self.hotkeyDisplayOverride = hotkeyDisplayOverride
+        self.appVersionBadgeOverride = appVersionBadgeOverride
 
         recentEditorFontNames = []
         editorSettings = EditorSettings.load(
@@ -108,6 +111,17 @@ final class AppModel: ObservableObject {
         }
 
         return KeyboardShortcuts.getShortcut(for: .toggleQuickTodo)?.description ?? "⌥."
+    }
+
+    var appVersionBadgeText: String {
+        if let appVersionBadgeOverride {
+            return appVersionBadgeOverride
+        }
+
+        return Self.versionBadgeText(
+            shortVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        )
     }
 
     var editorFontSizeDisplay: String {
@@ -402,6 +416,35 @@ final class AppModel: ObservableObject {
 
     private static let markdownType = UTType(filenameExtension: "md") ?? .plainText
     private static let allowedContentTypes = [markdownType, .plainText]
+
+    static func versionBadgeText(shortVersion: String?, build: String?) -> String {
+        if let shortVersion = normalizedVersionComponent(shortVersion) {
+            return "v\(shortVersion)"
+        }
+
+        if let build = normalizedVersionComponent(build) {
+            return "v\(build)"
+        }
+
+        return "vdev"
+    }
+
+    private static func normalizedVersionComponent(_ rawValue: String?) -> String? {
+        guard let rawValue else {
+            return nil
+        }
+
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false else {
+            return nil
+        }
+
+        if trimmed.hasPrefix("__"), trimmed.hasSuffix("__") {
+            return nil
+        }
+
+        return trimmed
+    }
 }
 
 extension AppModel {
@@ -423,7 +466,8 @@ extension AppModel {
             defaults: defaults,
             editorFontLibrary: fontLibrary,
             observeDefaults: false,
-            hotkeyDisplayOverride: "⌥."
+            hotkeyDisplayOverride: "⌥.",
+            appVersionBadgeOverride: "v0.1.9"
         )
 
         switch fixture {
